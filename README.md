@@ -107,6 +107,8 @@ jupyter nbconvert --to notebook --execute --inplace 2_Walkforward_Analysis.ipynb
 python check_consistency.py
 ```
 
+Tested with Python 3.12.5 on macOS.
+
 The cached prices in `data/prices.csv` are included, so results reproduce exactly. `python download_data.py --refresh` downloads fresh prices, which will change the results. `run_walkforward.py` compares V/MA against `results/vma_case_study_windows.csv`, which is committed.
 
 ## References
