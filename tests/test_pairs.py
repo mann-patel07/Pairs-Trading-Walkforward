@@ -210,3 +210,21 @@ def test_lag_below_one_raises():
         pairs.lag_positions(np.zeros(10, dtype=int), lag=0)
     with pytest.raises(ValueError):
         pairs.simulate_trading(np.zeros(10), np.zeros(10), np.zeros(10), 1.0, lag=0)
+
+
+def test_trade_net_returns_compound_to_the_window_return():
+    n = 40
+    z = np.zeros(n)
+    z[5], z[10] = -2.5, 0.5      # long spread, reverts
+    z[15], z[20] = 2.5, -0.5     # short spread, reverts
+    rng = np.random.default_rng(31)
+    r_y = rng.normal(0.0, 0.01, n)
+    r_x = rng.normal(0.0, 0.01, n)
+    for lag in (1, 2):
+        res = pairs.simulate_trading(z, r_y, r_x, 1.2, lag=lag)
+        assert len(res.trades) == 2
+        assert all(tr.reason == "revert" for tr in res.trades)
+        by_trade = np.prod([1.0 + pairs.trade_net_return(res, tr, lag) for tr in res.trades])
+        whole = np.prod(1.0 + res.net)
+        assert by_trade == pytest.approx(whole, abs=1e-12, rel=0)
+        assert by_trade != pytest.approx(1.0, abs=1e-6)

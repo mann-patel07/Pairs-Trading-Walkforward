@@ -235,11 +235,20 @@ def simulate_trading(
     return TradingResult(states, position, gross, cost, borrow, gross - cost - borrow, trades)
 
 
-def trade_net_return(result: TradingResult, trade: Trade) -> float:
-    """Compounded net return of one trade, including its closing cost day."""
+def trade_net_return(result: TradingResult, trade: Trade, lag: int = 1) -> float:
+    """Compounded net return of one trade, including its closing cost day.
+
+    `lag` must be the fill lag the result was simulated with. The first return day
+    is entry_idx + lag and the last is exit_idx + lag (the day the closing cost is
+    paid), cut at the end of the window. A trade whose first day is after the end
+    of the window was never filled, so its return is 0.0.
+    """
     last = len(result.net) - 1
-    end = min(trade.exit_idx + 1, last)
-    return float(np.prod(1.0 + result.net[trade.entry_idx + 1 : end + 1]) - 1.0)
+    start = trade.entry_idx + lag
+    if start > last:
+        return 0.0
+    end = min(trade.exit_idx + lag, last)
+    return float(np.prod(1.0 + result.net[start : end + 1]) - 1.0)
 
 
 def evaluate_pair_window(

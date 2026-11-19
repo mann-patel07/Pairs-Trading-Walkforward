@@ -20,11 +20,13 @@ In this sample the answer to the research question is no: the strategy made a sm
 
 Sharpe ratios are excess-return Sharpe ratios with no risk-free subtraction. The long-short return is treated as an excess return and no cash yield is added.
 
-| Variant | Net ann. return | Net ann. volatility | Net Sharpe | Max drawdown | Pair-windows traded | Completed trades |
+| Variant | Net ann. return | Net ann. volatility | Net Sharpe | Max drawdown | Eligible pair-windows | Completed trades |
 |---|---|---|---|---|---|---|
 | ALL | 0.57% | 1.50% | 0.39 | -3.55% | 547 | 440 |
 | COINT | 0.91% | 2.94% | 0.32 | -6.63% | 57 | 63 |
 | COINT_BH | 0.29% | 1.92% | 0.16 | -4.22% | 12 | 12 |
+
+Of the eligible pair-windows, 401 for ALL, 49 for COINT and 10 for COINT_BH had at least one day in a position.
 
 The full analysis, including gross numbers, exit reasons, market beta, and sensitivity tables, is in `2_Walkforward_Analysis.ipynb`.
 
@@ -44,11 +46,11 @@ The main results fill each trade at the close where the signal appears, which is
 
 ## Pre-registration
 
-All parameters, the 30 pairs, the trading rules, the three variants, and the primary metric are written in `PREREGISTRATION.md`. I wrote it before downloading any data and I did not change any parameter after seeing results. The entry threshold and cost grids in the sensitivity tables are checks on that fixed setting, not a search for a better one.
+All parameters, the 30 pairs, the trading rules, the three variants, and the primary metric are written in `PREREGISTRATION.md`. I wrote it before downloading any data and I did not change any parameter after seeing results. The entry threshold and cost grids in the sensitivity tables are checks on that fixed setting, not a search for a better one. The commit history here does not show this order, because I uploaded the finished project in a few commits.
 
 ## Tests
 
-`tests/test_pairs.py` has 17 tests with fixed seeds. They cover: no look-ahead in positions, the fill lag, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Run them with:
+`tests/test_pairs.py` has 18 tests with fixed seeds. They cover: no look-ahead in positions, the fill lag, the per-trade return helper with a later fill, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Run them with:
 
 ```
 pytest
