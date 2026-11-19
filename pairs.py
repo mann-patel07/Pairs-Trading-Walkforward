@@ -176,10 +176,16 @@ def run_state_machine(
     return states, trades
 
 
-def lag_positions(states: np.ndarray) -> np.ndarray:
-    """position[t] = state[t-1], and position[0] = 0."""
+def lag_positions(states: np.ndarray, lag: int = 1) -> np.ndarray:
+    """position[t] = state[t-lag], and the first `lag` positions are 0.
+
+    `lag=1` fills at the close where the signal appears. `lag=2` fills one day
+    later. `lag` must be an integer of 1 or more.
+    """
+    if not isinstance(lag, int) or isinstance(lag, bool) or lag < 1:
+        raise ValueError(f"lag ({lag!r}) must be an integer of 1 or more")
     position = np.zeros_like(states)
-    position[1:] = states[:-1]
+    position[lag:] = states[:-lag]
     return position
 
 
@@ -218,10 +224,11 @@ def simulate_trading(
     exit_z: float = config.EXIT_Z,
     stop_z: float = config.STOP_Z,
     cost_bps: float = config.COST_BPS,
+    lag: int = 1,
 ) -> TradingResult:
-    """Run signals, lag them one day, and compute gross, cost, borrow, and net returns."""
+    """Run signals, lag them `lag` days, and compute gross, cost, borrow, and net returns."""
     states, trades = run_state_machine(z, entry_z, exit_z, stop_z)
-    position = lag_positions(states)
+    position = lag_positions(states, lag)
     gross = gross_returns(position, r_y, r_x, beta)
     cost = trade_costs(position, cost_bps)
     borrow = borrow_costs(position, beta)

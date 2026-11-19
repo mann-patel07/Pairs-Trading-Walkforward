@@ -46,6 +46,26 @@ def main() -> int:
     m = re.search(r"Max drawdown: (\S+)", readme)
     expect("headline drawdown", pct(p.max_drawdown), m.group(1) if m else "missing")
 
+    lag = pd.read_csv(ROOT / "results" / "execution_lag_sensitivity.csv")
+    lag = lag[lag.variant == "COINT"].set_index("lag_days")
+    num, pc = r"(-?\d+\.\d+)", r"(-?\d+\.\d+%)"
+    m = re.search(
+        rf"net Sharpe ratio goes from {num} \(bootstrap interval {num} to {num}\) to {num} \(interval {num} to {num}\), "
+        rf"and the net annualized return goes from {pc} to {pc}\.", readme)
+    found = m.groups() if m else ("missing",) * 8
+    one, two = lag.loc[1], lag.loc[2]
+    expected = [f"{one.net_sharpe:.2f}", f"{one.sharpe_ci_low:.2f}", f"{one.sharpe_ci_high:.2f}",
+                f"{two.net_sharpe:.2f}", f"{two.sharpe_ci_low:.2f}", f"{two.sharpe_ci_high:.2f}",
+                pct(one.net_ann_return), pct(two.net_ann_return)]
+    names = ["Sharpe, fill at the signal close", "interval low, fill at the signal close",
+             "interval high, fill at the signal close", "Sharpe, fill one day later",
+             "interval low, fill one day later", "interval high, fill one day later",
+             "return, fill at the signal close", "return, fill one day later"]
+    for name, exp, got in zip(names, expected, found):
+        expect(f"fill lag COINT {name}", exp, got)
+    expect("fill lag one-day row matches the headline Sharpe", f"{p.sharpe:.2f}", f"{one.net_sharpe:.2f}")
+    expect("fill lag one-day row matches the headline return", pct(p.ann_return), pct(one.net_ann_return))
+
     for variant in ["ALL", "COINT", "COINT_BH"]:
         row = re.search(rf"^\| {variant} \|(.*)\|$", readme, flags=re.M)
         cells = [c.strip() for c in row.group(1).split("|")] if row else ["missing"] * 6

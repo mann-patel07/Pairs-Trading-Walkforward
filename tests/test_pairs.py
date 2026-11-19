@@ -188,3 +188,25 @@ def test_metrics_simple_cases():
     assert pairs.max_drawdown(np.array([0.1, -0.5, 0.2])) == pytest.approx(-0.5)
     assert pairs.annualized_return(np.full(252, 0.0)) == 0.0
     assert pairs.sharpe(r) == pytest.approx(r.mean() / r.std(ddof=1) * math.sqrt(252))
+
+
+def test_lag_two_position_is_the_state_two_days_earlier():
+    rng = np.random.default_rng(21)
+    z = np.cumsum(rng.normal(0, 1.0, 126))
+    res = pairs.simulate_trading(z, np.zeros(126), np.zeros(126), 1.0, lag=2)
+    assert np.all(res.position[:2] == 0)
+    assert np.array_equal(res.position[2:], res.states[:-2])
+    for k in (20, 60, 100):
+        z2 = z.copy()
+        z2[k:] = rng.normal(0, 3.0, 126 - k)
+        alt = pairs.simulate_trading(z2, np.zeros(126), np.zeros(126), 1.0, lag=2)
+        # z from day k on reaches the state on day k and the position on day k + 2,
+        # so every position up to and including day k + 1 stays the same
+        assert np.array_equal(res.position[: k + 2], alt.position[: k + 2])
+
+
+def test_lag_below_one_raises():
+    with pytest.raises(ValueError):
+        pairs.lag_positions(np.zeros(10, dtype=int), lag=0)
+    with pytest.raises(ValueError):
+        pairs.simulate_trading(np.zeros(10), np.zeros(10), np.zeros(10), 1.0, lag=0)

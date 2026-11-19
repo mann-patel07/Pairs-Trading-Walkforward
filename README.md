@@ -28,6 +28,10 @@ Sharpe ratios are excess-return Sharpe ratios with no risk-free subtraction. The
 
 The full analysis, including gross numbers, exit reasons, market beta, and sensitivity tables, is in `2_Walkforward_Analysis.ipynb`.
 
+### Filling one day later
+
+The main results fill each trade at the close where the signal appears, which is an idealization. I ran the study again with each trade filled one day later. For COINT, the net Sharpe ratio goes from 0.32 (bootstrap interval -0.36 to 0.99) to 0.10 (interval -0.54 to 0.71), and the net annualized return goes from 0.91% to 0.24%. The answer to the research question does not change: the strategy still makes a small net profit, and both Sharpe intervals include zero. The numbers are in `results/execution_lag_sensitivity.csv`. This check is not in `PREREGISTRATION.md`. I added it after a review, and it does not replace the primary result.
+
 ## Method
 
 - Windows: two years (504 trading days) of formation, then six months (126 trading days) of trading, rolled forward by 126 days. This gives 19 windows from 2015 to 2026. The last partial window is dropped.
@@ -44,7 +48,7 @@ All parameters, the 30 pairs, the trading rules, the three variants, and the pri
 
 ## Tests
 
-`tests/test_pairs.py` has 15 tests with fixed seeds. They cover: no look-ahead in positions, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Run them with:
+`tests/test_pairs.py` has 17 tests with fixed seeds. They cover: no look-ahead in positions, the fill lag, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Run them with:
 
 ```
 pytest
@@ -55,7 +59,7 @@ pytest
 ## Limitations
 
 - The universe is today's survivors, and I chose the pairs with hindsight about which firms are similar. The direction of the resulting bias is not known.
-- Signals are computed at the close and filled at the same close. This is an idealization.
+- Signals are computed at the close and filled at the same close. This is an idealization. See "Filling one day later" above.
 - There is no bid-ask spread or slippage model.
 - The 5 bps cost and the 0.50% borrow fee are illustrative assumptions. See the cost sensitivity table in the analysis notebook.
 - Constant-weight daily rebalancing between entry and exit is not costed.
@@ -86,6 +90,7 @@ pytest
 - `results/summary.csv`: gross and net metrics for each variant.
 - `results/cost_sensitivity.csv`: net Sharpe and return across cost levels.
 - `results/entry_sensitivity.csv`: net Sharpe and return across entry thresholds.
+- `results/execution_lag_sensitivity.csv`: net Sharpe, return, drawdown and Sharpe interval with the fill at the signal close and one day later.
 - `results/bootstrap.csv`: bootstrap estimates and intervals from the analysis notebook.
 - `results/vma_case_study_windows.csv`: V/MA per-window table written by the case study notebook.
 - `Images/equity_curves.png`: net equity curves.

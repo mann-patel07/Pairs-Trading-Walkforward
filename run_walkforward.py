@@ -46,8 +46,8 @@ def prepare(prices: pd.DataFrame, pair_list, windows):
     return prep
 
 
-def simulate_all(prep, windows, entry_z: float, cost_bps: float):
-    """Simulate every pair-window under one setting of entry threshold and cost."""
+def simulate_all(prep, windows, entry_z: float, cost_bps: float, lag: int = 1):
+    """Simulate every pair-window under one setting of entry threshold, cost, and fill lag."""
     sims = {}
     n = config.TRADING_DAYS
     for (y, x, k), p in prep.items():
@@ -55,7 +55,7 @@ def simulate_all(prep, windows, entry_z: float, cost_bps: float):
         if fit.beta > 0.0:
             sims[(y, x, k)] = pairs.simulate_trading(
                 p["z"], p["r_y"], p["r_x"], fit.beta,
-                entry_z=entry_z, exit_z=config.EXIT_Z, stop_z=config.STOP_Z, cost_bps=cost_bps,
+                entry_z=entry_z, exit_z=config.EXIT_Z, stop_z=config.STOP_Z, cost_bps=cost_bps, lag=lag,
             )
         else:
             zeros = np.zeros(n)
@@ -262,6 +262,19 @@ def main() -> int:
     entry_df = pd.DataFrame(entry_rows)
     entry_df.to_csv(RESULTS / "entry_sensitivity.csv", index=False)
 
+    lag_rows = []
+    for lag in config.LAG_GRID:
+        s = simulate_all(prep, windows, config.ENTRY_Z, config.COST_BPS, lag)
+        for v in VARIANTS:
+            r = portfolio_series(s, elig, pair_list, windows, v, "net")
+            ci_low, ci_high = np.percentile(pairs.block_bootstrap_sharpe(r), [2.5, 97.5])
+            lag_rows.append({"variant": v, "lag_days": lag,
+                             "net_sharpe": pairs.sharpe(r), "net_ann_return": pairs.annualized_return(r),
+                             "net_max_drawdown": pairs.max_drawdown(r),
+                             "sharpe_ci_low": ci_low, "sharpe_ci_high": ci_high})
+    lag_df = pd.DataFrame(lag_rows)
+    lag_df.to_csv(RESULTS / "execution_lag_sensitivity.csv", index=False)
+
     for v in VARIANTS:
         base = summary[(summary.variant == v) & (summary.basis == "net")].iloc[0]
         c = cost_df[(cost_df.variant == v) & (cost_df.cost_bps == config.COST_BPS)].iloc[0]
@@ -269,6 +282,21 @@ def main() -> int:
         for other in (c, e):
             assert np.isclose(other.net_sharpe, base.sharpe, equal_nan=True, atol=TOLERANCE), \
                 f"sensitivity row for {v} does not match the primary run"
+
+    for v in VARIANTS:
+        base = summary[(summary.variant == v) & (summary.basis == "net")].iloc[0]
+        g = lag_df[(lag_df.variant == v) & (lag_df.lag_days == 1)].iloc[0]
+        for got, want in ((g.net_sharpe, base.sharpe), (g.net_ann_return, base.ann_return),
+                          (g.net_max_drawdown, base.max_drawdown)):
+            assert np.isclose(got, want, equal_nan=True, atol=TOLERANCE), \
+                f"lag_days 1 row for {v} does not match the primary run"
+    boot_path = RESULTS / "bootstrap.csv"
+    if not boot_path.exists():
+        raise SystemExit(f"STOP: {boot_path} is missing. Run the analysis notebook first.")
+    boot = pd.read_csv(boot_path).set_index("quantity").loc["net_sharpe_COINT"]
+    g = lag_df[(lag_df.variant == "COINT") & (lag_df.lag_days == 1)].iloc[0]
+    assert round(g.sharpe_ci_low, 6) == round(boot.ci_low, 6) and round(g.sharpe_ci_high, 6) == round(boot.ci_high, 6), \
+        "COINT lag_days 1 interval does not match results/bootstrap.csv"
 
     check_vma_regression(prices, windows, pair_windows)
 

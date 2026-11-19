@@ -23,6 +23,7 @@ BLOCK_LENGTH = 21
 RANDOM_SEED = 42
 COST_GRID_BPS = [0.0, 2.0, 5.0, 10.0]  # sensitivity only
 ENTRY_GRID = [1.5, 2.0, 2.5]           # sensitivity only
+LAG_GRID = [1, 2]                      # sensitivity only, not pre-registered: 1 = fill at the signal close, 2 = fill one day later
 BENCHMARK = "SPY"
 
 # Data files and the latest acceptable first-valid date for any ticker.
