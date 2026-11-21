@@ -76,6 +76,18 @@ def main() -> int:
                                   expected, cells):
             expect(f"table {variant} {name}", exp, got)
 
+    pw = pd.read_csv(ROOT / "results" / "pair_windows.csv")
+    m = re.search(
+        r"Of the eligible pair-windows, (\d+) for ALL, (\d+) for COINT and (\d+) for COINT_BH "
+        r"had at least one day in a position\.", readme)
+    found = m.groups() if m else ("missing",) * 3
+    for variant, got in zip(["ALL", "COINT", "COINT_BH"], found):
+        eligible = pw[pw["eligible_" + variant]]
+        expect(f"eligible pair-windows with a position, {variant}",
+               str(int((eligible.days_in_position > 0).sum())), got)
+        expect(f"eligible pair-windows in the table, {variant}",
+               str(len(eligible)), str(int(net.loc[variant].pair_windows_traded)))
+
     named = set(re.findall(r"\(((?:Images)/[^)]+)\)", readme))
     layout = readme.split("## File layout")[1].split("## How to run")[0]
     named |= set(re.findall(r"^- `([^`]+)`", layout, flags=re.M))
