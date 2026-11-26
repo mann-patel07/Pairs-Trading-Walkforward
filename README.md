@@ -12,6 +12,8 @@ The primary variant is COINT (net of costs), fixed in advance in `PREREGISTRATIO
 
 In this sample the data do not show that cointegration predicts profitable pairs trading, and they cannot rule it out either. The strategy made a small net profit, but the Sharpe interval runs from below zero to near 1. The formation p-value shows no rank relationship with out-of-sample return, and the variant that ignores cointegration (ALL) has a higher net Sharpe ratio.
 
+That last comparison is fragile. Without its single best pair-window (AXP/COF in window 6, net +63.7%), the net Sharpe ratio of ALL falls from 0.39 to 0.28, below COINT. Requiring a hedge ratio of at least 0.3 leaves it at 0.43, so pairs with a small hedge ratio are not the reason. The numbers are in `results/all_variant_sensitivity.csv`, written by `all_variant_check.py`. I added this check after a review, so it is not in `PREREGISTRATION.md`.
+
 ![Net equity curves](Images/equity_curves.png)
 
 ![Formation p-value versus out-of-sample return](Images/pvalue_vs_return.png)
@@ -29,6 +31,8 @@ Sharpe ratios are excess-return Sharpe ratios with no risk-free subtraction. The
 Of the eligible pair-windows, 401 for ALL, 49 for COINT and 10 for COINT_BH had at least one day in a position.
 
 Of the 63 COINT trades, 25 closed because the spread reverted to the mean, 19 hit the stop and 19 were closed at the end of the window. So in most COINT trades the spread did not revert inside the window.
+
+Averaged by pair instead of over the portfolio, the mean COINT pair-window return is slightly negative: -0.11% (interval -1.61% to 1.38%, `results/bootstrap.csv`). The portfolio return is slightly positive because the portfolio gives more weight to the pair-windows in windows with few eligible pairs.
 
 The full analysis, including gross numbers, exit reasons, market beta, and sensitivity tables, is in `2_Walkforward_Analysis.ipynb`.
 
@@ -82,6 +86,7 @@ pytest
 - `pairs.py`: the library (windows, fits, signals, returns, costs, metrics, bootstrap).
 - `download_data.py`: downloads prices into the cache (only with `--refresh` when the cache exists).
 - `run_walkforward.py`: runs the full study and writes the results files.
+- `all_variant_check.py`: the ALL sensitivity check described under the headline result.
 - `check_consistency.py`: checks the README numbers and paths against the results.
 - `1_VMA_Case_Study.ipynb`: V/MA case study notebook.
 - `2_Walkforward_Analysis.ipynb`: analysis of the full study.
@@ -91,11 +96,12 @@ pytest
 - `results/pair_windows.csv`: one row per pair and window.
 - `results/trades.csv`: one row per completed trade.
 - `results/portfolio_returns.csv`: daily net portfolio returns for the three variants, plus SPY.
-- `results/summary.csv`: gross and net metrics for each variant.
+- `results/summary.csv`: gross and net metrics for each variant. Its column `pair_windows_traded` counts eligible pair-windows, as in the results table above.
 - `results/cost_sensitivity.csv`: net Sharpe and return across cost levels.
 - `results/entry_sensitivity.csv`: net Sharpe and return across entry thresholds.
 - `results/execution_lag_sensitivity.csv`: net Sharpe, return, drawdown and Sharpe interval with the fill at the signal close and one day later.
 - `results/bootstrap.csv`: bootstrap estimates and intervals from the analysis notebook.
+- `results/all_variant_sensitivity.csv`: net Sharpe and return of ALL with a hedge ratio floor and without its best pair-window.
 - `results/vma_case_study_windows.csv`: V/MA per-window table written by the case study notebook.
 - `Images/equity_curves.png`: net equity curves.
 - `Images/pairs_passing_per_window.png`: pairs passing the cointegration test per window.
@@ -111,6 +117,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pytest
 python run_walkforward.py
+python all_variant_check.py
 jupyter nbconvert --to notebook --execute --inplace 1_VMA_Case_Study.ipynb
 jupyter nbconvert --to notebook --execute --inplace 2_Walkforward_Analysis.ipynb
 python check_consistency.py
@@ -118,7 +125,7 @@ python check_consistency.py
 
 Tested with Python 3.12.5 on macOS.
 
-The cached prices in `data/prices.csv` are included, so results reproduce exactly. `python download_data.py --refresh` downloads fresh prices, which will change the results. `run_walkforward.py` compares V/MA against `results/vma_case_study_windows.csv`, which is committed.
+The cached prices in `data/prices.csv` are included, so results reproduce exactly. `python download_data.py --refresh` downloads fresh prices, which will change the results. `run_walkforward.py` also cross-checks two files that the notebooks write, `results/vma_case_study_windows.csv` and `results/bootstrap.csv`. Both are committed. If either is missing, the script skips that cross-check and says so, and running it again after the notebooks includes it.
 
 ## References
 

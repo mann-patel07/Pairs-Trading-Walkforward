@@ -1,6 +1,7 @@
-"""Pre-registered constants for the pairs trading walk-forward study.
+"""Constants for the pairs trading walk-forward study.
 
-Every parameter lives here. Nothing is changed after Phase 0.
+Every parameter lives here. The ones fixed in PREREGISTRATION.md were not changed.
+LAG_GRID was added later for a sensitivity check and is marked as such below.
 """
 
 START_DATE = "2015-01-01"
