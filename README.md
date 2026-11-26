@@ -34,11 +34,11 @@ The full analysis, including gross numbers, exit reasons, market beta, and sensi
 
 ### Filling one day later
 
-The main results fill each trade at the close where the signal appears, which is an idealization. I ran the study again with each trade filled one day later. For COINT, the net Sharpe ratio goes from 0.32 (bootstrap interval -0.36 to 0.99) to 0.10 (interval -0.54 to 0.71), and the net annualized return goes from 0.91% to 0.24%. The answer to the research question does not change: the strategy still makes a small net profit, and both Sharpe intervals include zero. The numbers are in `results/execution_lag_sensitivity.csv`. This check is not in `PREREGISTRATION.md`. I added it after a review, and it does not replace the primary result.
+The main results fill each trade at the close where the signal appears, which is an idealization. I ran the study again with each trade filled one day later. For COINT, the net Sharpe ratio goes from 0.32 (bootstrap interval -0.36 to 0.99) to 0.10 (interval -0.54 to 0.71), and the net annualized return goes from 0.91% to 0.24%. The conclusion does not change: the strategy still makes a small net profit, and both Sharpe intervals include zero. The numbers are in `results/execution_lag_sensitivity.csv`. This check is not in `PREREGISTRATION.md`. I added it after a review, and it does not replace the primary result.
 
 ## Method
 
-- Windows: two years (504 trading days) of formation, then six months (126 trading days) of trading, rolled forward by 126 days. This gives 19 windows from 2015 to 2026. The last partial window is dropped.
+- Windows: two years (504 trading days) of formation, then six months (126 trading days) of trading, rolled forward by 126 days. This gives 19 windows. Formation starts in 2015, and the trading days run from 2017 to 2026. The last partial window is dropped.
 - Frozen parameters: in each formation window I fit `log(Y) = alpha + beta * log(X) + e` by OLS and record sigma, the Engle-Granger p-value, and the half-life. These stay frozen for the whole trading window.
 - Signals: the z-score of the spread enters at 2.0 in absolute value, exits at 0, and stops at 4.0. After a stop there is no re-entry in that window. Everything is closed on the last day of the window.
 - Lag: the position held on day t is the state decided at the close of day t-1.
