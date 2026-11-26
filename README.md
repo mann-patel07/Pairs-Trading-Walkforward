@@ -10,7 +10,7 @@ The primary variant is COINT (net of costs), fixed in advance in `PREREGISTRATIO
 - Net annualized Sharpe ratio: 0.32 (indicative 95% interval from a block bootstrap: -0.36 to 0.99)
 - Max drawdown: -6.63%
 
-In this sample the answer to the research question is no: the strategy made a small net profit, the Sharpe interval includes zero, the formation p-value shows no rank relationship with out-of-sample return, and the variant that ignores cointegration (ALL) has a higher net Sharpe ratio.
+In this sample the data do not show that cointegration predicts profitable pairs trading, and they cannot rule it out either. The strategy made a small net profit, but the Sharpe interval runs from below zero to near 1. The formation p-value shows no rank relationship with out-of-sample return, and the variant that ignores cointegration (ALL) has a higher net Sharpe ratio.
 
 ![Net equity curves](Images/equity_curves.png)
 
@@ -27,6 +27,8 @@ Sharpe ratios are excess-return Sharpe ratios with no risk-free subtraction. The
 | COINT_BH | 0.29% | 1.92% | 0.16 | -4.22% | 12 | 12 |
 
 Of the eligible pair-windows, 401 for ALL, 49 for COINT and 10 for COINT_BH had at least one day in a position.
+
+Of the 63 COINT trades, 25 closed because the spread reverted to the mean, 19 hit the stop and 19 were closed at the end of the window. So in most COINT trades the spread did not revert inside the window.
 
 The full analysis, including gross numbers, exit reasons, market beta, and sensitivity tables, is in `2_Walkforward_Analysis.ipynb`.
 
