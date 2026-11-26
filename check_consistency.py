@@ -87,6 +87,29 @@ def main() -> int:
         expect(f"eligible pair-windows in the table, {variant}",
                str(len(eligible)), str(int(net.loc[variant].pair_windows_traded)))
 
+    rb = pd.read_csv(ROOT / "results" / "rebalance_cost_sensitivity.csv").set_index("variant")
+    cc, aa, bb = rb.loc["COINT"], rb.loc["ALL"], rb.loc["COINT_BH"]
+    m = re.search(
+        r"The COINT net Sharpe ratio goes from (\S+) to (\S+), and the ALL net Sharpe ratio from (\S+) to (\S+)\. "
+        r"The mean daily cost is (\S+) bps for COINT, (\S+) bps for ALL and (\S+) bps for COINT_BH\. "
+        r"This does not change the conclusion: ALL still has the higher net Sharpe ratio \((\S+) against (\S+)\)", readme)
+    found = m.groups() if m else ("missing",) * 9
+    expected = [f"{cc.net_sharpe:.3f}", f"{cc.net_sharpe_with_rebalance_cost:.3f}", f"{aa.net_sharpe:.3f}",
+                f"{aa.net_sharpe_with_rebalance_cost:.3f}", f"{cc.mean_daily_rebalance_cost_bps:.4f}",
+                f"{aa.mean_daily_rebalance_cost_bps:.4f}", f"{bb.mean_daily_rebalance_cost_bps:.4f}",
+                f"{aa.net_sharpe_with_rebalance_cost:.3f}", f"{cc.net_sharpe_with_rebalance_cost:.3f}"]
+    names = ["COINT Sharpe without", "COINT Sharpe with", "ALL Sharpe without", "ALL Sharpe with",
+             "COINT mean daily cost", "ALL mean daily cost", "COINT_BH mean daily cost",
+             "ALL Sharpe with, in the conclusion", "COINT Sharpe with, in the conclusion"]
+    for name, exp, got in zip(names, expected, found):
+        expect(f"rebalancing cost, {name}", exp, got)
+    expect("rebalancing cost: ALL still higher than COINT", "True",
+           str(aa.net_sharpe_with_rebalance_cost > cc.net_sharpe_with_rebalance_cost))
+    expect("rebalancing cost: net Sharpe in the CSV equals summary.csv", f"{p.sharpe:.6f}", f"{cc.net_sharpe:.6f}")
+    tests_line = re.search(r"`tests/test_pairs.py` has (\d+) tests", readme)
+    n_tests = len(re.findall(r"^def test_", (ROOT / "tests" / "test_pairs.py").read_text(), flags=re.M))
+    expect("test count", str(n_tests), tests_line.group(1) if tests_line else "missing")
+
     named = set(re.findall(r"\(((?:Images)/[^)]+)\)", readme))
     layout = readme.split("## File layout")[1].split("## How to run")[0]
     named |= set(re.findall(r"^- `([^`]+)`", layout, flags=re.M))

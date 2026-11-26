@@ -1,6 +1,6 @@
 # Pairs trading walk-forward study
 
-I tested whether Engle-Granger cointegration measured in a two-year formation window predicts profitable mean reversion in the next six-month trading window. The universe is 30 economically matched US large-cap pairs, 19 walk-forward windows, with illustrative trading costs.
+I tested whether Engle-Granger cointegration measured in a two-year formation window predicts profitable mean reversion in the next six-month trading window. The universe is 30 economically matched US large-cap pairs, 19 walk-forward windows, with illustrative trading costs. The answer is unclear: the primary variant made a small net profit (net Sharpe ratio 0.32), but its interval runs from -0.36 to 0.99, so the data neither confirm nor rule out an edge.
 
 ## Headline result
 
@@ -14,13 +14,15 @@ In this sample the data do not show that cointegration predicts profitable pairs
 
 That last comparison is fragile. Without its single best pair-window (AXP/COF in window 6, net +63.7%), the net Sharpe ratio of ALL falls from 0.39 to 0.28, below COINT. Requiring a hedge ratio of at least 0.3 leaves it at 0.43, so pairs with a small hedge ratio are not the reason. The numbers are in `results/all_variant_sensitivity.csv`, written by `all_variant_check.py`. I added this check after a review, so it is not in `PREREGISTRATION.md`.
 
+Rebalancing cost (added after the first version; plan in `UPGRADE_PLAN.md`). The portfolio holds an equal weight in each eligible pair every day, and keeping the weights equal means moving money between pairs. The main results do not cost that trading. I costed it at 5 bps on the money moved, for pairs with an open position only (moving cash costs nothing). The COINT net Sharpe ratio goes from 0.322 to 0.318, and the ALL net Sharpe ratio from 0.389 to 0.375. The mean daily cost is 0.0041 bps for COINT, 0.0087 bps for ALL and 0.0010 bps for COINT_BH. This does not change the conclusion: ALL still has the higher net Sharpe ratio (0.375 against 0.318), and I did not recompute the bootstrap interval. The numbers are in `results/rebalance_cost_sensitivity.csv`, written by `rebalance_check.py`. This is a sensitivity check and does not replace the headline numbers.
+
 ![Net equity curves](Images/equity_curves.png)
 
 ![Formation p-value versus out-of-sample return](Images/pvalue_vs_return.png)
 
 ## Results (net of costs)
 
-Sharpe ratios are excess-return Sharpe ratios with no risk-free subtraction. The long-short return is treated as an excess return and no cash yield is added.
+Sharpe ratios here subtract no risk-free rate. The strategy is long-short with unit gross notional, so I treat its return as already an excess return and add no cash yield.
 
 | Variant | Net ann. return | Net ann. volatility | Net Sharpe | Max drawdown | Eligible pair-windows | Completed trades |
 |---|---|---|---|---|---|---|
@@ -56,7 +58,7 @@ All parameters, the 30 pairs, the trading rules, the three variants, and the pri
 
 ## Tests
 
-`tests/test_pairs.py` has 18 tests with fixed seeds. They cover: no look-ahead in positions, the fill lag, the per-trade return helper with a later fill, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Run them with:
+`tests/test_pairs.py` has 25 tests with fixed seeds. They cover: no look-ahead in positions, the fill lag, the per-trade return helper with a later fill, isolation of the formation fit from trading prices, the sign of the short leg, trade costs, the stop rule, the forced close at window end, no same-day close and open, recovery of a known hedge ratio and half-life on synthetic data, the false rejection rate of the cointegration test on independent random walks, window layout, Benjamini-Hochberg, and the metric formulas. Seven of them were added after the first version: the portfolio step (no eligible pairs, the mean of two pairs, windows in order), the rebalancing cost (zero for equal returns, zero for a flat pair, the hand value, no eligible pairs) and the alignment of the SPY benchmark. Run them with:
 
 ```
 pytest
@@ -70,7 +72,7 @@ pytest
 - Signals are computed at the close and filled at the same close. This is an idealization. See "Filling one day later" above.
 - There is no bid-ask spread or slippage model.
 - The 5 bps cost and the 0.50% borrow fee are illustrative assumptions. See the cost sensitivity table in the analysis notebook.
-- Constant-weight daily rebalancing between entry and exit is not costed.
+- Keeping equal weights across pairs each day needs trading that the main results do not cost. The rebalancing cost paragraph under the headline result gives a sensitivity check. Constant-weight daily rebalancing of the two legs inside a pair, between entry and exit, is still not costed.
 - Engle-Granger has limited power in a two-year window and depends on which ticker is the dependent variable.
 - All pairs share one 2015 to 2026 market history, so the pairs are not independent.
 - Thirty pairs is a small sample.
@@ -87,6 +89,8 @@ pytest
 - `download_data.py`: downloads prices into the cache (only with `--refresh` when the cache exists).
 - `run_walkforward.py`: runs the full study and writes the results files.
 - `all_variant_check.py`: the ALL sensitivity check described under the headline result.
+- `rebalance_check.py`: the rebalancing cost check described under the headline result.
+- `UPGRADE_PLAN.md`: the plan for the rebalancing cost check, written before its results.
 - `check_consistency.py`: checks the README numbers and paths against the results.
 - `1_VMA_Case_Study.ipynb`: V/MA case study notebook.
 - `2_Walkforward_Analysis.ipynb`: analysis of the full study.
@@ -102,6 +106,7 @@ pytest
 - `results/execution_lag_sensitivity.csv`: net Sharpe, return, drawdown and Sharpe interval with the fill at the signal close and one day later.
 - `results/bootstrap.csv`: bootstrap estimates and intervals from the analysis notebook.
 - `results/all_variant_sensitivity.csv`: net Sharpe and return of ALL with a hedge ratio floor and without its best pair-window.
+- `results/rebalance_cost_sensitivity.csv`: net Sharpe, return and drawdown of each variant with and without the rebalancing cost, and the mean daily cost.
 - `results/vma_case_study_windows.csv`: V/MA per-window table written by the case study notebook.
 - `Images/equity_curves.png`: net equity curves.
 - `Images/pairs_passing_per_window.png`: pairs passing the cointegration test per window.
@@ -111,17 +116,19 @@ pytest
 
 ## How to run from a fresh clone
 
-```
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pytest
-python run_walkforward.py
-python all_variant_check.py
-jupyter nbconvert --to notebook --execute --inplace 1_VMA_Case_Study.ipynb
-jupyter nbconvert --to notebook --execute --inplace 2_Walkforward_Analysis.ipynb
-python check_consistency.py
-```
+Python 3.12.5 on macOS. Run each command from the project folder with the environment active (`source .venv/bin/activate`). The times were measured on my laptop with another job running.
+
+| Command | What it does | Time |
+|---|---|---|
+| `python3 -m venv .venv` | makes the environment | 1.9 s |
+| `pip install -r requirements.txt` | installs the pinned packages | 33 s |
+| `pytest` | runs the 25 tests | 4.9 s |
+| `python run_walkforward.py` | runs the study and writes the results files | 12 s |
+| `python all_variant_check.py` | the ALL sensitivity check | 10 s |
+| `python rebalance_check.py` | the rebalancing cost check (added after the first version) | 10 s |
+| `jupyter nbconvert --to notebook --execute --inplace 1_VMA_Case_Study.ipynb` | re-executes the V/MA notebook | 4.7 s |
+| `jupyter nbconvert --to notebook --execute --inplace 2_Walkforward_Analysis.ipynb` | re-executes the analysis notebook | 4.9 s |
+| `python check_consistency.py` | checks the numbers in this README | 0.3 s |
 
 Tested with Python 3.12.5 on macOS.
 

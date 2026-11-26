@@ -328,6 +328,27 @@ def portfolio_window_return(
     return np.mean([returns[name] for name in eligible], axis=0)
 
 
+def rebalance_costs(
+    returns: Dict[str, np.ndarray],
+    positions: Dict[str, np.ndarray],
+    eligible: Sequence[str],
+    n_days: int,
+    cost_bps: float = config.COST_BPS,
+) -> np.ndarray:
+    """Daily cost of keeping equal weights across eligible pairs.
+
+    Sensitivity check added after the first version (see UPGRADE_PLAN.md).
+    Only pairs with an open position pay, because moving cash costs nothing.
+    """
+    if len(eligible) == 0:
+        return np.zeros(n_days)
+    r = np.array([returns[name] for name in eligible], dtype=float)
+    r_p = r.mean(axis=0)
+    is_open = np.array([positions[name] != 0 for name in eligible])
+    drift = np.abs(1.0 - (1.0 + r) / (1.0 + r_p))
+    return cost_bps / 1e4 * (1.0 / len(eligible)) * np.sum(is_open * drift, axis=0)
+
+
 def equity_curve(returns: np.ndarray) -> np.ndarray:
     """Cumulative equity starting at 1 (the first element is the value after day one)."""
     return np.cumprod(1.0 + np.asarray(returns, dtype=float))

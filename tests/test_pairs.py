@@ -228,3 +228,65 @@ def test_trade_net_returns_compound_to_the_window_return():
         whole = np.prod(1.0 + res.net)
         assert by_trade == pytest.approx(whole, abs=1e-12, rel=0)
         assert by_trade != pytest.approx(1.0, abs=1e-6)
+
+
+def test_portfolio_window_return_with_no_eligible_pairs_is_zero():
+    out = pairs.portfolio_window_return({}, [], 126)
+    assert out.shape == (126,) and not out.any()
+
+
+def test_portfolio_window_return_is_the_elementwise_mean_of_two_pairs():
+    a = np.array([0.01, -0.02, 0.03])
+    b = np.array([0.03, 0.00, -0.01])
+    out = pairs.portfolio_window_return({"A": a, "B": b}, ["A", "B"], 3)
+    assert np.allclose(out, [0.02, -0.01, 0.01], atol=1e-15, rtol=0)
+
+
+def test_portfolio_series_concatenates_windows_in_order():
+    import types
+    import run_walkforward as rw
+    rng = np.random.default_rng(4)
+    n = config.TRADING_DAYS
+    pair_list = [("A", "B", "s"), ("C", "D", "s")]
+    sims, expected = {}, []
+    for k in range(2):
+        net = {p: rng.normal(0, 0.01, n) for p in ("AB", "CD")}
+        sims[("A", "B", k)] = types.SimpleNamespace(net=net["AB"])
+        sims[("C", "D", k)] = types.SimpleNamespace(net=net["CD"])
+        expected.append((net["AB"] + net["CD"]) / 2 if k == 0 else net["CD"])
+    elig = {("A", "B", 0): {"X": True}, ("C", "D", 0): {"X": True},
+            ("A", "B", 1): {"X": False}, ("C", "D", 1): {"X": True}}
+    out = rw.portfolio_series(sims, elig, pair_list, [0, 1], "X", "net")
+    assert np.allclose(out, np.concatenate(expected), atol=1e-15, rtol=0)
+
+
+def test_rebalance_cost_is_zero_when_every_pair_earns_the_same_return():
+    r = np.full(5, 0.01)
+    pos = np.ones(5, dtype=int)
+    out = pairs.rebalance_costs({"A": r, "B": r}, {"A": pos, "B": pos}, ["A", "B"], 5)
+    assert np.allclose(out, 0.0, atol=1e-18, rtol=0)
+
+
+def test_rebalance_cost_is_zero_for_a_flat_pair_and_matches_the_hand_value():
+    out = pairs.rebalance_costs({"A": np.array([0.02]), "B": np.array([0.0])},
+                                {"A": np.array([1]), "B": np.array([0])}, ["A", "B"], 1, cost_bps=5.0)
+    assert out[0] == pytest.approx(5.0 / 1e4 * 0.5 * abs(1 - 1.02 / 1.01), abs=1e-18, rel=0)
+    both_flat = pairs.rebalance_costs({"A": np.array([0.02]), "B": np.array([0.0])},
+                                      {"A": np.array([0]), "B": np.array([0])}, ["A", "B"], 1)
+    assert both_flat[0] == 0.0
+
+
+def test_rebalance_cost_with_no_eligible_pairs_is_zero():
+    out = pairs.rebalance_costs({}, {}, [], 7)
+    assert out.shape == (7,) and not out.any()
+
+
+def test_the_spy_benchmark_is_aligned_to_the_portfolio_dates():
+    import pandas as pd
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    prices = pd.read_csv(os.path.join(root, config.PRICES_PATH), index_col=0, parse_dates=True)
+    windows = pairs.make_windows(len(prices))
+    port_dates = prices.index[windows[0].trade_start: windows[-1].trade_end]
+    spy = prices[config.BENCHMARK].pct_change().reindex(port_dates)
+    assert len(spy) == len(windows) * config.TRADING_DAYS
+    assert not spy.isna().any()
